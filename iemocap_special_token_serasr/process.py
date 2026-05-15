@@ -2,16 +2,16 @@
 import os
 import pandas as pd
 
-# ======== CSV 固定目录 ========
+# ======== Fixed CSV directory ========
 CSV_DIR = "/lustre/users/gao/code/github_repo/SLM_personality/data"
 
-# 脚本所在目录（输出目录的根目录）
+# Directory where the script is located (root output directory)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 SESSIONS = [1, 2, 3, 4, 5]
 SPLITS = ["train", "test"]
 
-# OCEAN 映射表：二值 -> 描述词
+# OCEAN mapping table: binary label -> descriptive token
 TRAIT_WORD_MAP = {
     "O": {"e0": "<openness_low>", "e1": "<openness_high>"},
     "C": {"e0": "<conscientiousness_low>", "e1": "<conscientiousness_high>"},
@@ -23,31 +23,31 @@ TRAIT_WORD_MAP = {
 
 def bin_to_key(v):
     """
-    将 bin_* 列的值转成 'e0' 或 'e1'：
-      - 如果本身是 'e0'/'e1'（不区分大小写）直接返回
-      - 如果是 '0' 或 '1'，转成 'e0'/'e1'
+    Convert values in bin_* columns into 'e0' or 'e1':
+      - If already 'e0'/'e1' (case-insensitive), return directly
+      - If '0' or '1', convert to 'e0'/'e1'
     """
     s = str(v).strip().lower()
     if s in ("e0", "e1"):
         return s
     if s in ("0", "1"):
         return f"e{s}"
-    raise ValueError(f"无法从值 '{v}' 解析出 e0/e1，用于 personality 映射。")
+    raise ValueError(f"Cannot parse value '{v}' into e0/e1 for personality mapping.")
 
 
 def process_csv(csv_path, out_dir):
-    """读取CSV并生成 wav.scp、text、personality（映射后的单词，全大写）"""
-    print(f"处理 {csv_path} ...")
+    """Read CSV and generate wav.scp, text, and personality files."""
+    print(f"Processing {csv_path} ...")
 
     df = pd.read_csv(csv_path)
 
-    # 必要列检查
+    # Required column check
     required_cols = ["file", "text", "emotion"]
     for c in required_cols:
         if c not in df.columns:
-            raise ValueError(f"{csv_path} 缺少必要列: {c}")
+            raise ValueError(f"{csv_path} is missing required column: {c}")
 
-    # personality 的 bin 列
+    # Personality binary columns
     bin_cols = [
         "e",
         "a",
@@ -57,37 +57,39 @@ def process_csv(csv_path, out_dir):
     ]
     for c in bin_cols:
         if c not in df.columns:
-            raise ValueError(f"{csv_path} 缺少性格二值列: {c}")
+            raise ValueError(f"{csv_path} is missing personality binary column: {c}")
 
     os.makedirs(out_dir, exist_ok=True)
 
-    # uttid: 去掉扩展名，只保留文件名
+    # uttid: remove extension and keep filename only
     df["uttid"] = df["file"].apply(lambda x: os.path.splitext(os.path.basename(str(x)))[0])
 
-    # emotion token + 原始 text
+    # emotion token + original text
     df["emotion_lower"] = df["emotion"].astype(str).str.lower()
     df["orig_text"] = df["text"].astype(str).fillna("").str.strip()
-    # 目标：<emotion> + 空格 + text
+
+    # Target format: <emotion> + space + text
     df["text_out"] = "<" + df["emotion_lower"] + ">" + " " + df["orig_text"]
 
-    # 按 uttid 排序，保证稳定
+    # Sort by uttid for stable output
     df = df.sort_values("uttid")
 
     wavscp_path = os.path.join(out_dir, "wav.scp")
     text_path = os.path.join(out_dir, "text")
     personality_path = os.path.join(out_dir, "personality")
 
-    # 写 wav.scp
+    # Write wav.scp
     with open(wavscp_path, "w", encoding="utf-8") as f_wav:
         for _, r in df.iterrows():
             f_wav.write(f"{r['uttid']} {r['file']}\n")
 
-    # 写 text
+    # Write text
     with open(text_path, "w", encoding="utf-8") as f_txt:
         for _, r in df.iterrows():
             f_txt.write(f"{r['uttid']} {r['text_out']}\n")
 
-    # 写 personality（从 bin_* 列映射成单词，然后整行大写）
+    # Write personality
+    # Convert binary labels into descriptive tokens, then uppercase the whole sentence
     with open(personality_path, "w", encoding="utf-8") as f_per:
         for _, r in df.iterrows():
             b_ext = bin_to_key(r["e"])
@@ -110,7 +112,7 @@ def process_csv(csv_path, out_dir):
 
             f_per.write(f"{r['uttid']} {line}\n")
 
-    print(f"✅ 输出完成：{wavscp_path}, {text_path}, {personality_path}\n")
+    print(f"✅ Output completed: {wavscp_path}, {text_path}, {personality_path}\n")
 
 
 def main():
@@ -123,9 +125,9 @@ def main():
             if os.path.exists(csv_path):
                 process_csv(csv_path, out_dir)
             else:
-                print(f"⚠️  跳过 {base_name}：未找到 {csv_path}")
+                print(f"⚠️ Skipping {base_name}: file not found: {csv_path}")
 
-    print("🎯 全部完成！")
+    print("🎯 All processing completed!")
 
 
 if __name__ == "__main__":

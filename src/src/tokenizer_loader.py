@@ -1,22 +1,3 @@
-"""
-Created by Hao at 2025-07-01
-
-src.tokenizer_loader
-=========================
-Helper to load a HuggingFace ``AutoTokenizer`` based on the commonly used
-fields in ``model_args``.
-
-Typical usage
--------------
-```python
-from utils.tokenizer_loader import load_tokenizer
-
-# returns a tokenizer instance ready for use
-tokenizer = load_tokenizer(model_args, logger)
-```
-This mirrors the logic previously written inline and keeps the main script
-concise.
-"""
 from __future__ import annotations
 
 import logging

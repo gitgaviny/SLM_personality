@@ -4,7 +4,7 @@
 import sys
 from collections import defaultdict
 
-MISS_TAG = "__MISS__"  # 缺失预测的占位符列名
+MISS_TAG = "__MISS__"  # placeholder label when a prediction is missing
 
 def read_kv(path):
     d = {}
@@ -35,16 +35,16 @@ def main():
         print("WA=0.0000\tUA=0.0000")
         sys.exit(1)
 
-    # —— 统计总体与分类别 —— #
+    # --- overall counts and per-class stats ---
     total = len(gold)
     correct = 0
-    per_tot = defaultdict(int)   # gold中每类的样本数
-    per_cor = defaultdict(int)   # gold中每类被正确预测的样本数
+    per_tot = defaultdict(int)   # number of gold samples per class
+    per_cor = defaultdict(int)   # number of correct predictions per gold class
 
-    # —— 混淆矩阵：行=gold，列=pred（缺失放在 MISS_TAG 列） —— #
+    # --- confusion matrix: rows=gold, cols=pred (missing -> MISS_TAG column) ---
     conf = defaultdict(lambda: defaultdict(int))
 
-    # —— 逐条输出 —— #
+    # --- per-sample dump ---
     print("## per-sample (ID\tGOLD\tPRED)")
     for ex_id, g in gold.items():
         per_tot[g] += 1
@@ -59,29 +59,29 @@ def main():
             conf[g][MISS_TAG] += 1
             print(f"{ex_id}\t{g}\t{MISS_TAG}")
 
-    # —— 计算 WA / UA —— #
+    # --- WA / UA ---
     wa = correct / total
     recalls = [(per_cor[c] / per_tot[c]) for c in per_tot]
     ua = sum(recalls) / len(recalls) if recalls else 0.0
 
     print(f"\nWA={wa:.4f}\tUA={ua:.4f}\n")
 
-    # —— 输出混淆矩阵（行=GOLD，列=PRED） —— #
-    # 列集合：所有出现过的预测类（包含 MISS_TAG）
+    # --- print confusion matrix (rows=GOLD, cols=PRED) ---
+    # column set: every prediction label seen (including MISS_TAG)
     pred_classes = set()
     for g in conf:
         pred_classes.update(conf[g].keys())
 
-    # 将真正的类别（int）排序；MISS 列（若存在）放在最后
+    # sort numeric gold classes; put MISS last if present
     int_cols = sorted([c for c in pred_classes if c != MISS_TAG])
     cols = int_cols + ([MISS_TAG] if MISS_TAG in pred_classes else [])
 
-    # 打印表头
+    # header row
     header = ["G\\P"] + [str(c) for c in cols]
     print("## confusion matrix (rows=GOLD, cols=PRED)")
     print("\t".join(header))
 
-    # 行顺序：gold 中出现过的类别升序
+    # row order: ascending gold labels that appear
     gold_rows = sorted(per_tot.keys())
     for g in gold_rows:
         row = [str(g)]

@@ -1,19 +1,3 @@
-"""
-Created by Hao at 2025-07-01
-
-src.feature_extractor_loader
-=================================
-Helper to load a HuggingFace ``AutoFeatureExtractor`` based on fields in
-``model_args``.
-
-Typical use
------------
-```python
-from utils.feature_extractor_loader import load_feature_extractor
-feature_extractor = load_feature_extractor(model_args, logger)
-```
-This mirrors the logic you had inline and centralises it for reuse.
-"""
 from __future__ import annotations
 
 import logging

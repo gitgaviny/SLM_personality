@@ -1,16 +1,3 @@
-# Created by Hao at 2025-07-01
-# insert_adapters.py
-#
-# Utility for inserting LoRA adapters into a model.
-# If you only need adapters in the decoder, control it with `model_args.adapter_only_decoder`.
-#
-# Dependencies:
-#   pip install peft
-#
-# Usage example:
-#   from insert_adapters import insert_adapters
-#   insert_adapters(model, model_args, config)
-
 import logging
 from peft import LoraConfig  # Uncomment get_peft_model if you prefer that API
 # from peft import get_peft_model
