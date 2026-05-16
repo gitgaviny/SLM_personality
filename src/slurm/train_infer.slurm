@@ -1,20 +1,19 @@
 #!/bin/bash
-#SBATCH --job-name=special-token-with-masked-MTL
-#SBATCH --partition=002-partition-default
+#SBATCH --job-name=slm-train-infer
+#SBATCH --partition=CHANGEME_PARTITION
 #SBATCH --gpus-per-node=8
-#SBATCH --container-image=/lustre/container_cache/slam-llm/slam-llm-latest.sqsh
-#SBATCH --container-mounts=/lustre:/lustre
 #SBATCH --exclusive
 
 set -euo pipefail
 
-export HF_HOME="/lustre/teams/speech/hf_cache/"
+export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 export WORKING_DIR="${SLURM_SUBMIT_DIR:-$SCRIPT_DIR}"
 
 cd "$WORKING_DIR"
 
-repeat=5
+repeat=1
 
 stage=3
 stop_stage=4
@@ -27,21 +26,19 @@ emotion_loss_weight=1
 encoder=hubert-large
 decoder=Llama-3.2-1B-Instruct
 
-fused_model=false
 encoder_freeze=false
 decoder_freeze=true
 adapter_only_decoder=true
 instruct=true
 talker_ctc=true
 eval_steps=100
-virtual_env=/lustre/users/gao/envs/slmser/venv
+virtual_env="/path/to/your/venv"
 
 partial_encoder_unfreeze=""
 partial_decoder_unfreeze="lm_head,embed_tokens,embed_positions,layernorm_embedding"
 partial_others_unfreeze="enc_to_dec_proj"
 
-echo "== Running 5 experiments sequentially in ONE Slurm job =="
-echo "== repeat=${repeat}"
+echo "== repeat=${repeat}, stage=${stage}-${stop_stage}"
 echo "== fused_model=${fused_model}, corpus=${corpus}, epoch=${epoch}, w_asr=${asr_loss_weight}, w_emo=${emotion_loss_weight}"
 echo "== encoder=${encoder}, decoder=${decoder}"
 
@@ -59,13 +56,8 @@ for rep in $(seq 1 "${repeat}"); do
     exp_prefix="exp_testreal${rep}"
   fi
 
-  if [ "$fused_model" = true ]; then
-    base_slm_dir="${dump_prefix}_ff"
-    base_output_dir="${exp_prefix}_ff"
-  else
-    base_slm_dir="${dump_prefix}"
-    base_output_dir="${exp_prefix}_${asr_loss_weight}_${emotion_loss_weight}"
-  fi
+  base_slm_dir="${dump_prefix}"
+  base_output_dir="${exp_prefix}_${asr_loss_weight}_${emotion_loss_weight}"
 
   for split_id in 1 2 3 4 5; do
     echo
@@ -73,7 +65,7 @@ for rep in $(seq 1 "${repeat}"); do
     echo "Running split_id = ${split_id} (rep ${rep}/${repeat})"
     echo "=============================="
 
-    encoder_base="path/to/pretrained/hubert/${split_id}"
+    encoder_base="/path/to/pretrained/encoder/session${split_id}"
     slm_dir="${base_slm_dir}/session${split_id}"
     output_dir="${base_output_dir}/session${split_id}"
 
@@ -88,7 +80,7 @@ for rep in $(seq 1 "${repeat}"); do
       corpus=$corpus
       encoder=$encoder
       decoder=$decoder
-      fused_model=$fused_model
+      fused_model=false
       encoder_freeze=$encoder_freeze
       decoder_freeze=$decoder_freeze
       partial_encoder_unfreeze=$partial_encoder_unfreeze
@@ -103,11 +95,7 @@ for rep in $(seq 1 "${repeat}"); do
       virtual_env=${virtual_env}
     )
 
-    if [ "$fused_model" = true ]; then
-      bash ../iemocap_ff.sh "${args[@]}"
-    else
-      bash ../iemocap.sh "${args[@]}"
-    fi
+    bash ../iemocap.sh "${args[@]}"
   done
 done
 

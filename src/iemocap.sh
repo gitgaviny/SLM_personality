@@ -17,6 +17,7 @@ for arg in "$@"; do
     stop_stage=*)           stop_stage="${arg#*=}" ;;
     split_id=*)             split_id="${arg#*=}" ;;
     encoder_base=*)         encoder_base="${arg#*=}" ;;
+    base_data_path=*)        base_data_path="${arg#*=}" ;;
     epoch=*)                epoch="${arg#*=}" ;;
     asr_loss_weight=*)      asr_loss_weight="${arg#*=}" ;;
     emotion_loss_weight=*)  emotion_loss_weight="${arg#*=}" ;;
@@ -24,6 +25,7 @@ for arg in "$@"; do
     pretrained_model=*)     pretrained_model="${arg#*=}" ;;
     encoder=*)              encoder="${arg#*=}" ;;
     decoder=*)              decoder="${arg#*=}" ;;
+    decoder_base=*)          decoder_base="${arg#*=}" ;;
     fused_model=*)          fused_model="${arg#*=}" ;;
     encoder_freeze=*)       encoder_freeze="${arg#*=}" ;;
     decoder_freeze=*)       decoder_freeze="${arg#*=}" ;;
@@ -49,10 +51,12 @@ echo "++++ epoch=$epoch"
 echo "++++ asr_loss_weight=$asr_loss_weight"
 echo "++++ emotion_loss_weight=$emotion_loss_weight"
 echo "++++ corpus=$corpus"
+echo "++++ base_data_path=${base_data_path:-}"
 echo "++++ slm_dir=$slm_dir"
 echo "++++ pretrained_model=${pretrained_model:-}"
 echo "++++ encoder=$encoder"
 echo "++++ decoder=$decoder"
+echo "++++ decoder_base=${decoder_base:-}"
 echo "++++ fused_model=$fused_model"
 echo "++++ encoder_freeze=$encoder_freeze"
 echo "++++ decoder_freeze=$decoder_freeze"
@@ -92,53 +96,15 @@ fi
 
 PY_BIN="$virtual_env/bin/python"
 
-echo "== Node: $(hostname)"
-echo "== Before fix: show current venv python status"
-ls -l "$PY_BIN" || echo "ls failed (maybe broken symlink)"
-echo "Resolved -> $(readlink -f "$PY_BIN" || echo NA)"
-echo "System python on this node:"
-command -v python3 || true
-python3 -V || true
-echo "Available /usr/bin/python* on this node:"
-ls -l /usr/bin/python* 2>/dev/null || true
-
-# --- Choose a working system Python on this compute node ---
-# Prefer Python 3.10 to match your original venv; fallback to 3.11 or 3.8 if needed.
-TARGET_PY="$(command -v python3.10 || true)"
-if [[ -z "${TARGET_PY}" ]]; then
-  # If 'python3' is 3.10 on this node, use it
-  if python3 -V 2>/dev/null | grep -qE '^Python 3\.10\.'; then
-    TARGET_PY="$(command -v python3)"
-  fi
-fi
-# Last resort: allow 3.11 or 3.8 (may require reinstalling wheels later)
-if [[ -z "${TARGET_PY}" ]]; then
-  TARGET_PY="$(command -v python3.11 || true)"
-fi
-if [[ -z "${TARGET_PY}" ]]; then
-  TARGET_PY="$(command -v python3.8 || true)"
-fi
-
-if [[ -z "${TARGET_PY}" ]]; then
-  echo "ERROR: No suitable system python3 found on this node." >&2
+if [[ ! -x "$PY_BIN" ]]; then
+  echo "ERROR: Python executable not found at $PY_BIN" >&2
+  echo "Please set virtual_env=path/to/your/venv." >&2
   exit 1
 fi
-echo "Using system Python: $TARGET_PY ($("$TARGET_PY" -V 2>&1))"
+echo "Using Python: $("$PY_BIN" -V 2>&1)"
 
-# --- Repair venv python symlinks if broken and align with node's interpreter ---
-# Reason: your venv/bin/python pointed to /usr/bin/python3.10, which doesn’t exist on some nodes.
-if [[ ! -x "$PY_BIN" ]] || { [[ -L "$PY_BIN" ]] && [[ ! -e "$(readlink -f "$PY_BIN")" ]]; }; then
-  echo ">>> Fixing venv python links to: $TARGET_PY"
-  ln -sf "$TARGET_PY" "$virtual_env/bin/python"
-  ln -sf "$TARGET_PY" "$virtual_env/bin/python3"
-  # If the chosen interpreter is 3.10, also create python3.10 name for tools that expect it
-  if "$TARGET_PY" -V 2>&1 | grep -qE '^Python 3\.10\.'; then
-    ln -sf "$TARGET_PY" "$virtual_env/bin/python3.10"
-  fi
-
-  # Upgrade venv layout in-place so all scripts' shebangs point to the new interpreter
-  "$TARGET_PY" -m venv --upgrade "$virtual_env"
-fi
+base_data_path="${base_data_path:-path/to/data/${corpus}}"
+decoder_base="${decoder_base:-path/to/model}"
 
 
 export TORCH_DISTRIBUTED_DEBUG=DETAIL
@@ -152,7 +118,7 @@ export TORCH_SHOW_CPP_STACKTRACES=1
 # 1. Data preparing
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   "$PY_BIN" utils/generate_dataset.py \
-  --base_data_path path/to/your/data/${corpus} \
+  --base_data_path "$base_data_path" \
 	--wav_scp_name wav.scp \
 	--output_dir datasets/
 fi
@@ -163,7 +129,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   save_dir="${slm_dir}/${model_ids}"
   "${PY_BIN}" utils/create_from_pretrained.py \
     --encoder_base "$encoder_base" \
-    --decoder_base "path/to/meta-llama" \
+    --decoder_base "$decoder_base" \
     --llm_id "${decoder}" \
     --save_dir "${save_dir}" \
     --talker_ctc \

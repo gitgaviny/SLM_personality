@@ -2,8 +2,7 @@
 import os
 import pandas as pd
 
-# ======== Fixed CSV directory ========
-CSV_DIR = "/lustre/users/gao/code/github_repo/SLM_personality/data"
+CSV_DIR = "path/to/iemocap"
 
 # Directory where the script is located (root output directory)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

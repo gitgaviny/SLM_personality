@@ -74,7 +74,7 @@ def parse_args() -> argparse.Namespace:  # noqa: D401
     )
     parser.add_argument(
         "--decoder_base",
-        default="/lustre/share/downloaded/models/meta-llama/",
+        default="path/to/model",
         help="Base directory containing Llama checkpoints; overriden if --decoder_id set",
     )
     parser.add_argument(

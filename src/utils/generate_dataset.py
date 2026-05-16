@@ -68,7 +68,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--base_data_path",
         type=str,
-        default="/lustre/users/gao/speechllm/labels/iemocap",
+        default="path/to/data",
         help="Root directory that contains sessionX/train and sessionX/test folders.",
     )
     parser.add_argument(

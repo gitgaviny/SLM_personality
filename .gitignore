@@ -1,0 +1,17 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+iemocap_special_token_serasr/session*/
+
+src/datasets/
+
+src/dump/
+
+src/exp/
+src/exp_testreal*/
+
+src/slurm/slurm-*.out
+
+src/slurm/step1.slurm
+src/slurm/iemocap.slurm

@@ -142,8 +142,8 @@ def main():
 
     # 11. Define skip special tokens during inference
     def skip_special_tokens(est_text):
-        allowed_special_tokens = ["<sc>",  "<bos_prompt>", "<eos_prompt>", 
-                                "<bos_speech>", "<eos_speech>", "<bos_response>", "<eos_response>"
+        allowed_special_tokens = ["<sc>",  "<bos_prompt>", "<eos_prompt>",
+                                "<bos_speech>", "<eos_speech>", "<bos_response>", "<eos_response>",
                                 "<openness_low>",
                                 "<openness_high>",
                                 "<conscientiousness_low>",
@@ -186,17 +186,19 @@ def main():
                 use_cache=True,
             ).reshape(-1)
 
-            labels_tensor = torch.tensor(vectorized_datasets["eval"][i]['labels'])                 
+            labels_tensor = torch.tensor(vectorized_datasets["eval"][i]['labels'])
 
-            est_emotion = 128257                                      
-            if est.numel() >= 2:     
-                emotion_idx = (labels_tensor == model.config.bosr_token_id).nonzero(as_tuple=True)[0].item()
-                label_emotion = int(labels_tensor[emotion_idx + 1].item())           
-                
-                emotion_idx = (labels_tensor == model.config.bosr_token_id).nonzero(as_tuple=True)[0].item()
-                emotion = int(est[emotion_idx + 1].item())
-                if 128257 <= emotion <= 128260:
-                    est_emotion = emotion                     
+            est_emotion = 128257
+            label_emotion = -1
+            bosr_positions = (labels_tensor == model.config.bosr_token_id).nonzero(as_tuple=True)[0]
+            if bosr_positions.numel() > 0:
+                emotion_idx = int(bosr_positions[0].item())
+                if emotion_idx + 1 < labels_tensor.numel():
+                    label_emotion = int(labels_tensor[emotion_idx + 1].item())
+                if emotion_idx + 1 < est.numel():
+                    emotion = int(est[emotion_idx + 1].item())
+                    if 128257 <= emotion <= 128260:
+                        est_emotion = emotion
 
             label_text = tokenizer.decode(labels_tensor)
             label_text = skip_special_tokens(label_text)
