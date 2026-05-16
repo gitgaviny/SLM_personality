@@ -39,7 +39,7 @@ partial_decoder_unfreeze="lm_head,embed_tokens,embed_positions,layernorm_embeddi
 partial_others_unfreeze="enc_to_dec_proj"
 
 echo "== repeat=${repeat}, stage=${stage}-${stop_stage}"
-echo "== fused_model=${fused_model}, corpus=${corpus}, epoch=${epoch}, w_asr=${asr_loss_weight}, w_emo=${emotion_loss_weight}"
+echo "== corpus=${corpus}, epoch=${epoch}, w_asr=${asr_loss_weight}, w_emo=${emotion_loss_weight}"
 echo "== encoder=${encoder}, decoder=${decoder}"
 
 for rep in $(seq 1 "${repeat}"); do
