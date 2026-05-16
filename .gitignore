@@ -9,7 +9,6 @@ src/datasets/
 src/dump/
 
 src/exp/
-src/exp_testreal*/
 
 src/slurm/slurm-*.out
 
